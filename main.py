@@ -11,7 +11,12 @@ goals = []
 goal_entry = None
 goal_subject_entry = None
 goal_target_entry = None 
-goals_display = None 
+goals_display = None
+current_subject = None
+active_subject = None 
+subjects_display = None
+subject_dropdown = None
+
 
 
 def load_subjects():
@@ -47,7 +52,21 @@ def save_goals(goals):
             {"goals": goals},
             file,
             indent=4
-        )             
+        ) 
+
+def update_goal_progress(subject, minutes):
+    global goals
+
+    hours = minutes / 60
+
+    for goal in goals:
+        if goal["subject"] == subject:
+            goal["completed_hours"] += hours
+
+    save_goals(goals)
+    refresh_goals()
+
+                                
 
 def delete_goal(goal):
     global goals
@@ -154,6 +173,10 @@ def handle_add_subject():
 
     if add_subject(subjects, subject_name):
         refresh_subjects()
+
+        if subject_dropdown:
+            subject_dropdown["values"] = subjects
+
         subject_entry.delete(0, tk.END)
 
 
@@ -291,10 +314,20 @@ def create_subject_card(parent, subject):
 def start_timer():
     global running
     global start_time
+    global active_subject
 
+    if not current_subject.get():
+        return
+    
     if not running:
         running = True
         start_time = time.time()
+        active_subject = current_subject.get()
+
+        print(
+            "Studying:",
+            active_subject
+        )
 
 def pause_timer():
     global running
@@ -320,11 +353,93 @@ def reset_timer():
     )  
 
 def save_study_session():
-    data={
-        "total_seconds": elasped_time
-    }  
-    with open("study_data.json","w")as file:
-        json.dump(data, file, indent=4)
+    global active_subject
+    global elasped_time
+
+    if not active_subject:
+        return
+
+    try:
+        with open("study_data.json","r") as file:
+            data = json.load(file)
+
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {
+            "sessions":[]
+        } 
+
+    minutes = elasped_time // 60
+
+    session = {
+        "subject" : active_subject, 
+        "minutes" : minutes
+    } 
+
+    data["sessions"].append(session)
+
+    with open("study_data.json", "w") as file:
+        json.dump(
+            data, 
+            file,
+            indent=4
+        )
+
+    update_goal_progress(
+        active_subject,
+        minutes
+    ) 
+
+def get_today_stats():
+    try:
+        with open("study_data.json", "r") as file:
+            data = json.load(file)
+
+    except(FileNotFoundError, json.JSONDecodeError):
+        return{
+            "minutes" : 0,
+            "sessions" : 0
+        }
+
+    total_minutes = 0
+    session_count = 0
+
+    for session in data.get("sessions", []):
+        total_minutes += session.get(
+            "minutes",
+            0
+        ) 
+        session_count += 1
+
+    return{
+        "minutes" : total_minutes,
+        "sessions" : session_count
+    }
+
+def get_subject_stats(subject):
+    try:
+        with open("study_data.json", "r") as file:
+            data = json.load(file)
+
+    except(FileNotFoundError, json.JSONDecodeError):
+        return{
+            "minutes":0,
+            "sessions":0       
+        }
+
+    total = 0 
+    count = 0
+
+    for session in data.get("sessions",[]):
+        if session["subject"] == subject:
+            total += session["minutes"]
+            count += 1
+
+    return{
+        "minutes": total,
+        "sessions": count
+    }         
+                   
+
 
 
 def update_timer():
@@ -349,12 +464,21 @@ def add_goal():
     subject = goal_subject_entry.get().strip().title()
     target = goal_target_entry.get().strip()
 
+    try:
+        target = int(target)
+
+    except ValueError:
+        return
+
+    if target <= 0:
+        return    
+
     if not goal_name or not subject or not target:
         return
     goal = {
         "goal": goal_name,
         "subject":subject,
-        "target_hours":int(target),
+        "target_hours":target,
         "completed_hours":0
     }
     goals.append(goal)
@@ -409,9 +533,13 @@ def create_goal_card(parent, goal):
         1
     )
 
-    percentage = int(
-        (completed / target) * 100
-    )
+    if target <= 0:
+        percentage = 0
+
+    else:
+        percentage = int(
+            (completed / target) * 100
+        )  
 
     if percentage >= 100:
         status = "🟢 Completed"
@@ -481,32 +609,85 @@ def main():
     global goal_subject_entry
     global goal_target_entry
     global goals_display
+    global current_subject
+    global subject_dropdown
      
     app = ttk.Window(themename="cosmo")
     app.title("StudySpace")
     app.geometry("1000x1500")
 
+    main_canvas = tk.Canvas(app)
+
+    main_scrollbar = ttk.Scrollbar(
+        app,
+        orient="vertical",
+        command=main_canvas.yview
+    )
+    main_frame = ttk.Frame(main_canvas)
+
+    main_frame.bind(
+        "<Configure>",
+        lambda e: main_canvas.configure(
+            scrollregion=main_canvas.bbox("all")
+        )
+    )
+
+    canvas_window = main_canvas.create_window(
+        (0,0),
+        window=main_frame,
+        anchor="nw"
+    )
+
+    main_canvas.bind(
+        "<Configure>",
+        lambda e : main_canvas.itemconfig(
+            canvas_window,
+            width=e.width
+        )    
+    )
+
+    main_canvas.configure(
+        yscrollcommand=main_scrollbar.set
+    )
+
+    main_canvas.pack(
+        side="left",
+        fill="both",
+        expand=True
+    )
+
+    main_scrollbar.pack(
+        side="right",
+        fill="y"
+    )
+
+
+
     subjects = load_subjects()
     goals = load_goals()
 
+    current_subject = tk.StringVar()
+
+    if subjects:
+        current_subject.set(subjects[0])
+
     title_label = ttk.Label(
-        app,
+        main_frame,
         text="StudySpace",
         font=("Arial", 14)
     )
     title_label.pack(pady=(30, 5))
 
     welcome_label = ttk.Label(
-        app,
+        main_frame,
         text="Your personal study companion.",
         font=("Arial", 14)
     )
     welcome_label.pack(pady=(0, 25))
 
     progress_frame = ttk.LabelFrame(
-        app,
-        text="Today's Progress",
-        padding=20
+        main_frame,
+        text="Today's Progress"
     )
     progress_frame.pack(
         fill="x",
@@ -514,8 +695,32 @@ def main():
         pady=10
     )
 
+    stats_frame = ttk.Label(
+        main_frame,
+        text="Statistics",
+        padding=20
+    )
+
+    stats_frame.pack(
+        fill="x",
+        padx=40,
+        pady=10
+    )
+
+    today_stats = get_today_stats()
+
+    stats_label = ttk.Label(
+        stats_frame,
+        text=f"""
+🕛 Total Study:{today_stats['minutes']} minutes
+📚 Sessions: {today_stats['sessions']}
+""" ,
+        font=("Arial",12)
+    )
+    stats_label.pack()
+
     goals_frame = ttk.LabelFrame(
-        app,
+        main_frame,
         text="Study Goals",
         padding=20
         )
@@ -563,6 +768,22 @@ def main():
     )
     timer_label.pack(pady=10)
 
+    ttk.Label(
+        progress_frame,
+        text="Current Subject"
+    ).pack()
+
+    subject_dropdown = ttk.Combobox(
+        progress_frame,
+        textvariable=current_subject,
+        values=subjects,
+        state="readonly",
+        width=25
+    )
+    subject_dropdown.pack(
+        pady=25
+    )
+
     button_frame = ttk.Frame(progress_frame)
     button_frame.pack(pady=10)
 
@@ -597,13 +818,12 @@ def main():
     )
 
     subjects_frame = ttk.LabelFrame(
-        app,
+        main_frame,
         text="Subjects",
         padding=20
     )
     subjects_frame.pack(
         fill="both",
-        expand=True,
         padx=40,
         pady=5
     )
@@ -622,56 +842,15 @@ def main():
     )
     add_subject_button.pack(pady=5)
 
-    canvas = tk.Canvas(
-        subjects_frame,
-        height=250
-    )
-    scrollbar = tk.Scrollbar(
-        subjects_frame,
-        orient="vertical",
-        command=canvas.yview
+    
+
+    subjects_display = ttk.Frame(
+        subjects_frame
     )
 
-    subjects_display = ttk.Frame(canvas)
-    def update_scroll(e):
-        canvas.configure(
-            scrollregion=canvas.bbox("all")
-        )
-    subjects_display.bind(
-        "<Configure>",
-        update_scroll
-            
-        )   
+    subjects_display.pack(
+        fill="x"
 
-    canvas_frame = canvas.create_window(
-        (0,0),
-        window=subjects_display,
-        anchor="nw"
-    )  
-
-    canvas.configure(
-        yscrollcommand=scrollbar.set
-    ) 
-
-    canvas.pack(
-        side="left",
-        fill="both",
-        expand=True,
-        pady=10
-    )
-
-    scrollbar.pack(
-        side="right",
-        fill="y"
-    )
-
-    canvas.bind(
-        "<Configure>",
-        lambda e: canvas.itemconfig(
-            canvas_frame,
-            width=e.width
-
-        )
     )
 
     refresh_subjects()
