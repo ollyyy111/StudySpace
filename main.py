@@ -65,6 +65,46 @@ def delete_subject(subject_name):
         save_subjects(subjects)
         refresh_subjects()
 
+def rename_subject(old_subject):
+    rename_window = tk.Toplevel()
+    rename_window.title("Rename Subject")
+    rename_window.geometry("300x150")  
+    rename_window.resizable(False, False)  
+
+    ttk.Label(
+        rename_window,
+        text=f"Rename '{old_subject}'"
+    ).pack(pady=10) 
+
+    new_name_entry = ttk.Entry(rename_window, width=25)
+    new_name_entry.pack(pady=5)
+    new_name_entry.focus()
+
+    def save_new_name():
+        global subjects
+
+        new_name = new_name_entry.get().strip().title()
+
+        if not new_name:
+            return
+
+        if new_name in subjects:
+            return
+
+        index = subjects.index(old_subject)
+        subjects[index] = new_name
+
+        save_subjects(subjects) 
+        refresh_subjects()
+
+        rename_window.destroy()
+
+    ttk.Button(
+        rename_window,
+        text="Save",
+        command=save_new_name
+    ).pack(pady=10)          
+
 def create_subject_card(parent, subject):
 
     icons = {
@@ -120,6 +160,17 @@ def create_subject_card(parent, subject):
         command=lambda: delete_subject(subject)
     )
     delete_button.pack(
+        anchor="e",
+        padx=10,
+        pady=5
+    )
+
+    rename_button = ttk.Button(
+        card,
+        text="✏️ Rename",
+        command=lambda: rename_subject(subject)
+    )
+    rename_button.pack(
         anchor="e",
         padx=10,
         pady=5
