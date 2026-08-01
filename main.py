@@ -57,6 +57,13 @@ def refresh_subjects():
             subject
         )
 
+def delete_subject(subject_name):
+    global subjects
+
+    if subject_name in subjects:
+        subjects.remove(subject_name)
+        save_subjects(subjects)
+        refresh_subjects()
 
 def create_subject_card(parent, subject):
 
@@ -88,7 +95,6 @@ def create_subject_card(parent, subject):
         bd=1,
         relief="solid"
     )
-
     card.pack(
         fill="x",
         padx=10,
@@ -102,9 +108,19 @@ def create_subject_card(parent, subject):
         bg=card_color,
         font=("Arial", 14, "bold")
     )
-
     label.pack(
         anchor="w",
+        padx=10,
+        pady=5
+    )
+
+    delete_button = ttk.Button(
+        card,
+        text="🗑️ Delete",
+        command=lambda: delete_subject(subject)
+    )
+    delete_button.pack(
+        anchor="e",
         padx=10,
         pady=5
     )
@@ -116,7 +132,6 @@ def main():
     global subjects_display
 
     app = ttk.Window(themename="cosmo")
-
     app.title("StudySpace")
     app.geometry("950x650")
 
@@ -129,7 +144,6 @@ def main():
     )
     title_label.pack(pady=(30, 5))
 
-
     welcome_label = ttk.Label(
         app,
         text="Your personal study companion.",
@@ -137,26 +151,22 @@ def main():
     )
     welcome_label.pack(pady=(0, 25))
 
-
     progress_frame = ttk.LabelFrame(
         app,
         text="Today's Progress",
         padding=20
     )
-
     progress_frame.pack(
         fill="x",
         padx=40,
         pady=10
     )
 
-
     subjects_frame = ttk.LabelFrame(
         app,
         text="Subjects",
         padding=20
     )
-
     subjects_frame.pack(
         fill="both",
         expand=True,
@@ -164,28 +174,21 @@ def main():
         pady=10
     )
 
-
     subject_entry = ttk.Entry(
         subjects_frame,
         width=30
     )
-
     subject_entry.pack(pady=10)
-
     subject_entry.focus()
-
 
     add_subject_button = ttk.Button(
         subjects_frame,
         text="➕ Add Subject",
         command=handle_add_subject
     )
-
     add_subject_button.pack(pady=5)
 
-
     subjects_display = ttk.Frame(subjects_frame)
-
     subjects_display.pack(
         fill="both",
         expand=True,
