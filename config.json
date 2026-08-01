@@ -1,6 +1,11 @@
 {
     "subjects": [
+        "History",
         "Maths",
-        "Computer"
+        "Science",
+        "English",
+        "Bio",
+        "Hindi",
+        "Geography"
     ]
 }

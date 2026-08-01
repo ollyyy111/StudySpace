@@ -1,6 +1,12 @@
 import tkinter as tk
 import ttkbootstrap as ttk  # type: ignore
 import json
+import time
+running = False
+start_time = None
+elasped_time = 0
+app = None
+timer_label = None
 
 
 def load_subjects():
@@ -79,6 +85,7 @@ def rename_subject(old_subject):
     new_name_entry = ttk.Entry(rename_window, width=25)
     new_name_entry.pack(pady=5)
     new_name_entry.focus()
+  
 
     def save_new_name():
         global subjects
@@ -177,14 +184,71 @@ def create_subject_card(parent, subject):
     )
 
 
+def start_timer():
+    global running
+    global start_time
+
+    if not running:
+        running = True
+        start_time = time.time()
+
+def pause_timer():
+    global running
+    global elasped_time
+
+    if running:
+        elasped_time += int(time.time() - start_time)
+        running = False
+        save_study_session()
+     
+
+def reset_timer():
+    global running
+    global start_time 
+    global elasped_time
+
+    running = False
+    start_time = None
+    elasped_time = 0
+
+    timer_label.config(
+        text="00:00:00"
+    )  
+
+def save_study_session():
+    data={
+        "total_seconds": elasped_time
+    }  
+    with open("study_data.json","w")as file:
+        json.dump(data, file, indent=4)
+
+
+def update_timer():
+    global elasped_time
+    if running:
+        current_time = int(time.time() - start_time + elasped_time)
+
+        hours = current_time//3600
+        minutes = (current_time%3600)//60
+        seconds = current_time%60
+
+        timer_label.config(
+            text=f"{hours:02}:{minutes:02}:{seconds:02}"
+        )
+
+    app.after(1000, update_timer)
+
+                        
 def main():
     global subjects
     global subject_entry
     global subjects_display
+    global app
+    global timer_label
 
     app = ttk.Window(themename="cosmo")
     app.title("StudySpace")
-    app.geometry("950x650")
+    app.geometry("950x850")
 
     subjects = load_subjects()
 
@@ -213,6 +277,46 @@ def main():
         pady=10
     )
 
+    timer_label = ttk.Label(
+        progress_frame,
+        text="00:00:00",
+        font=("Arial",24, "bold")
+    )
+    timer_label.pack(pady=10)
+
+    button_frame = ttk.Frame(progress_frame)
+    button_frame.pack(pady=10)
+
+    start_button = ttk.Button(
+        button_frame,
+        text="▶️ Start",
+        command=start_timer
+    )
+    start_button.pack(
+        side="left",
+        padx=5
+    )
+
+    pause_button = ttk.Button(
+        button_frame,
+        text="⏸️ Pause",
+        command=pause_timer
+    )
+    pause_button.pack(
+        side="left",
+        padx=5
+    )
+
+    reset_button = ttk.Button(
+        button_frame,
+        text="🔀 Reset",
+        command=reset_timer
+    )
+    reset_button.pack(
+        side="left",
+        padx=5
+    )
+
     subjects_frame = ttk.LabelFrame(
         app,
         text="Subjects",
@@ -239,16 +343,54 @@ def main():
     )
     add_subject_button.pack(pady=5)
 
-    subjects_display = ttk.Frame(subjects_frame)
-    subjects_display.pack(
+    canvas = tk.Canvas(subjects_frame)
+    scrollbar = tk.Scrollbar(
+        subjects_frame,
+        orient="vertical",
+        command=canvas.yview
+    )
+
+    subjects_display = ttk.Frame(canvas)
+    subjects_display.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )    
+    )
+    canvas_frame = canvas.create_window(
+        (0,0),
+        window=subjects_display,
+        anchor="nw"
+    )  
+
+    canvas.configure(
+        yscrollcommand=scrollbar.set
+    ) 
+
+    canvas.pack(
+        side="left",
         fill="both",
         expand=True,
         pady=10
     )
 
+    scrollbar.pack(
+        side="right",
+        fill="y"
+    )
+
+    canvas.bind(
+        "<Configure>",
+        lambda e: canvas.itemconfig(
+            canvas_frame,
+            width=e.width
+
+        )
+    )
 
     refresh_subjects()
 
+    update_timer()
     app.mainloop()
 
 
