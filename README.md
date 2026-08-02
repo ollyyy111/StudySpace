@@ -30,7 +30,7 @@ A personal study companion built with Python and Tkinter.
    python -m venv .venv
 
 4 Activate the virtual environment
-    .venv\Scripts\activate  
+    .venv/Scripts/activate  
   MAC/LINUX
     source.venv/bin/activate
 
@@ -42,7 +42,7 @@ A personal study companion built with Python and Tkinter.
         python main.py
 
 OR directly activate the virtual environment by typing 
-     .venv\Scripts\python.exe main.py         
+     .venv/Scripts/python.exe main.py         
 
 
 ## Future Improvements
