@@ -1,20 +1,3 @@
 {
-    "sessions": [
-        {
-            "subject": "Maths",
-            "minutes": 0
-        },
-        {
-            "subject": "Chemistry",
-            "minutes": 0
-        },
-        {
-            "subject": "Geogrpahy",
-            "minutes": 1
-        },
-        {
-            "subject": "Geogrpahy",
-            "minutes": 1
-        }
-    ]
+    "sessions": []
 }
