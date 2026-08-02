@@ -45,9 +45,6 @@ OR directly activate the virtual environment by typing
      .venv\Scripts\python.exe main.py         
 
 
-
-python main.py
-
 ## Future Improvements
 
 - Notes system
