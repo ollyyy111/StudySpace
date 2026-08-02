@@ -2,6 +2,7 @@ import tkinter as tk
 import ttkbootstrap as ttk  # type: ignore
 import json
 import time
+from tkinter import messagebox
 running = False
 start_time = None
 elasped_time = 0
@@ -17,7 +18,18 @@ active_subject = None
 subjects_display = None
 subject_dropdown = None
 
+APP_BG = "#F8F9FA"         
+PROGRESS_BG = "#F0D2DA"    
+STATS_BG = "#EEEAFD"        
+GOALS_BG = "#FCD1F5"       
+SUBJECTS_BG = "#F8F2EF"
 
+TITLE_FONT = ("Arial",24, "bold")
+HEADING_FONT = ("Arial",16, "bold")
+NORMAL_FONT = ("Arial",12)
+SMALL_FONT = ("Arial",10)
+CARD_FONT = ("Arial",14, "bold")
+TIMER_FONT = ("Arial",28, "bold")
 
 def load_subjects():
     try:
@@ -44,6 +56,8 @@ def load_goals():
             data=json.load(file)
             return data.get("goals",[]) 
     except FileNotFoundError:
+        return[]
+    except json.JSONDecodeError:
         return[]
 
 def save_goals(goals):
@@ -72,6 +86,11 @@ def delete_goal(goal):
     global goals
 
     if goal in goals:
+        confirm = messagebox.askyesno(
+            "Delete Goal",
+            f"Delete '{goal['goal']}'?"
+        )
+    if confirm:    
         goals.remove(goal)
         save_goals(goals)
         refresh_goals()
@@ -137,7 +156,10 @@ def edit_goal(old_goal):
 
         old_goal["goal"] = new_name
         old_goal["subject"] = new_subject
-        old_goal["target_hours"] = int(new_target)
+        try:
+            old_goal["target_hours"] = int(new_target)
+        except ValueError:
+            return
 
         save_goals(goals)
         refresh_goals()
@@ -247,40 +269,70 @@ def create_subject_card(parent, subject):
         "Science": "🔬",
         "English": "📚",
         "History": "🏛️",
-        "Computer": "💻"
+        "Computer": "💻",
+        "Accountancy": "🧾",
+        "Business Studies": "💼"
     }
 
     icon = icons.get(subject, "📖")
 
-    colors = {
-        "Maths": "#FFE5B4",
-        "Mathematics": "#FFE5B4",
-        "Science": "#C8F7C5",
-        "English": "#CDE7FF",
-        "History": "#FFD6E8",
-        "Computer": "#E5D4FF"
-    }
+    SUBJECT_COLORS = {
+        "Maths": "#FFE5A5",              
+        "Physics": "#BDE0FE",            
+        "Chemistry": "#CDB4DB",          
+        "Biology": "#B7E4C7",           
+        "English": "#FFC8DD",            
+        "History": "#DDB892",            
+        "Geography": "#A9DEF9",         
+        "Computer Science": "#CDEAC0",  
+        "Accountancy": "#FFD6A5",      
+        "Business Studies": "#FFCAD4",  
+        "Economics": "#D0F4DE",          
+        "Political Science": "#E4C1F9",  
+        "Hindi": "#FFCFD2",             
+        "Sanskrit": "#BDE0C8",          
+        "Art": "#FDE2E4",                
+        "Physical Education": "#C9E4DE" 
+    } 
 
-    card_color = colors.get(subject, "#FFFFFF")
+    DEFAULT_COLORS = [
+        "#FAD2E1",  
+        "#CDEAC0",  
+        "#BDE0FE", 
+        "#FFF1A8",  
+        "#FFD6A5",  
+        "#E4C1F9",  
+        "#C9E4DE",
+        "#F1C0E8",  
+        "#CFBAF0",
+        "#A9DEF9"  
+    ]
+
+    if subject in SUBJECT_COLORS:
+        card_color = SUBJECT_COLORS[subject]
+    else:
+        index = abs(hash(subject)) % len(DEFAULT_COLORS)  
+        card_color = DEFAULT_COLORS[index]  
 
     card = tk.Frame(
         parent,
         bg=card_color,
-        bd=1,
-        relief="solid"
+        bd=0,
+        relief="flat"
     )
     card.pack(
         fill="x",
         padx=10,
-        pady=6,
-        ipady=8
+        pady=8,
+        ipady=12
     )
 
     label = tk.Label(
         card,
         text=f"{icon} {subject}",
         bg=card_color,
-        font=("Arial", 14, "bold")
+        fg="#333333",
+        font=CARD_FONT
     )
     label.pack(
         anchor="w",
@@ -290,7 +342,7 @@ def create_subject_card(parent, subject):
 
     delete_button = ttk.Button(
         card,
-        text="🗑️ Delete",
+        text="Delete",
         command=lambda: delete_subject(subject)
     )
     delete_button.pack(
@@ -301,7 +353,7 @@ def create_subject_card(parent, subject):
 
     rename_button = ttk.Button(
         card,
-        text="✏️ Rename",
+        text="Rename",
         command=lambda: rename_subject(subject)
     )
     rename_button.pack(
@@ -324,19 +376,19 @@ def start_timer():
         start_time = time.time()
         active_subject = current_subject.get()
 
-        print(
-            "Studying:",
-            active_subject
-        )
+
 
 def pause_timer():
     global running
     global elasped_time
 
-    if running:
-        elasped_time += int(time.time() - start_time)
-        running = False
-        save_study_session()
+    if not running:
+        return
+    
+    elasped_time += int(time.time() - start_time)
+    running = False
+
+    save_study_session()
      
 
 def reset_timer():
@@ -350,7 +402,9 @@ def reset_timer():
 
     timer_label.config(
         text="00:00:00"
-    )  
+    )
+    global active_subject
+    active_subject = None  
 
 def save_study_session():
     global active_subject
@@ -368,7 +422,7 @@ def save_study_session():
             "sessions":[]
         } 
 
-    minutes = elasped_time // 60
+    minutes = max(1, elasped_time // 60)
 
     session = {
         "subject" : active_subject, 
@@ -501,9 +555,11 @@ def refresh_goals():
 
 def create_goal_card(parent, goal):
 
-    card = ttk.Frame(
+    card = tk.Frame(
         parent,
-        padding=10
+        bg=GOALS_BG,
+        padx=10,
+        pady=10
     )
 
     card.pack(
@@ -512,15 +568,19 @@ def create_goal_card(parent, goal):
         pady=5
     )
 
-    ttk.Label( 
+    tk.Label( 
         card,
         text=f"🎯 {goal['goal']}",
+        bg=GOALS_BG,
+        fg="#333333",
         font=("Arial",13, "bold")
     ).pack(anchor="w")
 
-    ttk.Label(
+    tk.Label(
         card,
-        text=f"Subject:{goal['subject']}"
+        text=f"Subject:{goal['subject']}",
+        bg=GOALS_BG,
+        fg="#333333"
     ).pack(anchor="w")
 
     completed = goal.get(
@@ -549,7 +609,7 @@ def create_goal_card(parent, goal):
     ttk.Label(
         card,
         text=f"Progress: {percentage}%"
-    ).pack(anchor="w")
+    ).pack(anchor="w") 
 
     progress_bar = ttk.Progressbar(
         card,
@@ -598,6 +658,14 @@ def create_goal_card(parent, goal):
         padx=5
     )
 
+def close_app():
+    global running
+
+    if running:
+        save_study_session()
+
+    app.destroy()    
+
 def main():
     global subjects
     global subject_entry
@@ -613,23 +681,40 @@ def main():
     global subject_dropdown
      
     app = ttk.Window(themename="cosmo")
+    app.configure(
+        background = APP_BG
+    )
     app.title("StudySpace")
     app.geometry("1000x1500")
+    app.minsize(
+        800,
+        700
+    )
 
-    main_canvas = tk.Canvas(app)
+    main_canvas = tk.Canvas(
+        app,
+        bg=APP_BG,
+        highlightthickness=0
+        )
 
     main_scrollbar = ttk.Scrollbar(
         app,
         orient="vertical",
         command=main_canvas.yview
     )
-    main_frame = ttk.Frame(main_canvas)
-
-    main_frame.bind(
-        "<Configure>",
-        lambda e: main_canvas.configure(
+    main_frame = tk.Frame(
+        main_canvas,
+        bg=APP_BG
+        )
+    
+    def update_scroll_region(event=None):
+        main_canvas.configure(
             scrollregion=main_canvas.bbox("all")
         )
+        
+    main_frame.bind(
+        "<Configure>",
+         update_scroll_region
     )
 
     canvas_window = main_canvas.create_window(
@@ -649,6 +734,17 @@ def main():
     main_canvas.configure(
         yscrollcommand=main_scrollbar.set
     )
+
+    def on_mousewheel(event):
+        main_canvas.yview_scroll(
+            int(-1*(event.delta/120)),
+            "units"
+        )
+
+    main_canvas.bind_all(
+        "<MouseWheel>",
+        on_mousewheel
+    )    
 
     main_canvas.pack(
         side="left",
@@ -671,23 +767,31 @@ def main():
     if subjects:
         current_subject.set(subjects[0])
 
+ 
+
     title_label = ttk.Label(
         main_frame,
         text="StudySpace",
-        font=("Arial", 14)
+        font=TITLE_FONT
     )
     title_label.pack(pady=(30, 5))
+
 
     welcome_label = ttk.Label(
         main_frame,
         text="Your personal study companion.",
-        font=("Arial", 14)
+        font=NORMAL_FONT
     )
     welcome_label.pack(pady=(0, 25))
 
-    progress_frame = ttk.LabelFrame(
+    progress_frame = tk.LabelFrame(
         main_frame,
-        text="Today's Progress"
+        text="Today's Progress",
+        bg=PROGRESS_BG,
+        fg="#333333",
+        padx=20,
+        pady=20,
+        font=HEADING_FONT
     )
     progress_frame.pack(
         fill="x",
@@ -695,10 +799,14 @@ def main():
         pady=10
     )
 
-    stats_frame = ttk.Label(
+    stats_frame = tk.LabelFrame(
         main_frame,
         text="Statistics",
-        padding=20
+        bg=STATS_BG,
+        fg="#333333",
+        padx=20,
+        pady=20,
+        font=HEADING_FONT
     )
 
     stats_frame.pack(
@@ -709,8 +817,10 @@ def main():
 
     today_stats = get_today_stats()
 
-    stats_label = ttk.Label(
+    stats_label = tk.Label(
         stats_frame,
+        bg=STATS_BG,
+        fg="#333333",
         text=f"""
 🕛 Total Study:{today_stats['minutes']} minutes
 📚 Sessions: {today_stats['sessions']}
@@ -719,10 +829,14 @@ def main():
     )
     stats_label.pack()
 
-    goals_frame = ttk.LabelFrame(
+    goals_frame = tk.LabelFrame(
         main_frame,
         text="Study Goals",
-        padding=20
+        bg=GOALS_BG,
+        fg="#333333",
+        padx=20,
+        pady=20,
+        font=HEADING_FONT
         )
     goals_frame.pack(
         fill="x",
@@ -730,18 +844,33 @@ def main():
         pady=10
     ) 
 
+    ttk.Label(
+        goals_frame,
+        text="Goal Name"
+    ).pack()
+    
     goal_entry = ttk.Entry(
         goals_frame,
         width=10
     )
     goal_entry.pack(pady=5)
 
+    ttk.Label(
+        goals_frame,
+        text="Subject"
+    ).pack()
+ 
     goal_subject_entry = ttk.Entry(
         goals_frame,
         width=30
     )
     goal_subject_entry.pack(pady=5)
 
+    ttk.Label(
+        goals_frame,
+        text="Target Hours"
+    ).pack()
+ 
     goal_target_entry = ttk.Entry(
         goals_frame,
         width=30
@@ -761,16 +890,21 @@ def main():
         pady=5
     )
     
-    timer_label = ttk.Label(
+    timer_label = tk.Label(
         progress_frame,
         text="00:00:00",
-        font=("Arial",24, "bold")
+        bg=PROGRESS_BG,
+        fg="#333333",
+        font=TIMER_FONT
     )
     timer_label.pack(pady=10)
 
-    ttk.Label(
+    tk.Label(
         progress_frame,
-        text="Current Subject"
+        text="Current Subject",
+        bg=PROGRESS_BG,
+        fg="#333333",
+        font=NORMAL_FONT
     ).pack()
 
     subject_dropdown = ttk.Combobox(
@@ -809,7 +943,7 @@ def main():
 
     reset_button = ttk.Button(
         button_frame,
-        text="🔀 Reset",
+        text="Reset",
         command=reset_timer
     )
     reset_button.pack(
@@ -817,16 +951,25 @@ def main():
         padx=5
     )
 
-    subjects_frame = ttk.LabelFrame(
+    subjects_frame = tk.LabelFrame(
         main_frame,
         text="Subjects",
-        padding=20
+        bg=SUBJECTS_BG,
+        fg="#333333",
+        padx=20,
+        pady=20,
+        font=HEADING_FONT
     )
     subjects_frame.pack(
         fill="both",
         padx=40,
         pady=5
     )
+
+    ttk.Label(
+        subjects_frame,
+        text="Add New Subject"
+    ).pack()
 
     subject_entry = ttk.Entry(
         subjects_frame,
@@ -844,8 +987,9 @@ def main():
 
     
 
-    subjects_display = ttk.Frame(
-        subjects_frame
+    subjects_display = tk.Frame(
+        subjects_frame,
+        bg=SUBJECTS_BG
     )
 
     subjects_display.pack(
@@ -857,6 +1001,10 @@ def main():
 
     update_timer()
     refresh_goals()
+    app.protocol(
+        "WM_DELETE_WINDOW",
+        close_app
+    )
     app.mainloop()
 
 

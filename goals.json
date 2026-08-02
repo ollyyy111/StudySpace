@@ -1,3 +1,10 @@
 {
-    "goals": []
+    "goals": [
+        {
+            "goal": "exam",
+            "subject": "Geography",
+            "target_hours": 10,
+            "completed_hours": 0
+        }
+    ]
 }
