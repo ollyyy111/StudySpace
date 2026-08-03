@@ -342,7 +342,7 @@ def create_subject_card(parent, subject):
 
     delete_button = ttk.Button(
         card,
-        text="Delete",
+        text="🗑️ Delete",
         command=lambda: delete_subject(subject)
     )
     delete_button.pack(
@@ -353,7 +353,7 @@ def create_subject_card(parent, subject):
 
     rename_button = ttk.Button(
         card,
-        text="Rename",
+        text="✏️ Rename",
         command=lambda: rename_subject(subject)
     )
     rename_button.pack(
@@ -779,7 +779,7 @@ def main():
 
     welcome_label = ttk.Label(
         main_frame,
-        text="Your personal study companion.",
+        text="Your personal study companion",
         font=NORMAL_FONT
     )
     welcome_label.pack(pady=(0, 25))
@@ -943,7 +943,7 @@ def main():
 
     reset_button = ttk.Button(
         button_frame,
-        text="Reset",
+        text="🔀 Reset",
         command=reset_timer
     )
     reset_button.pack(
